@@ -1,43 +1,68 @@
-import styles from './styles.module.scss'
+import { useEffect, useState } from 'react';
+import io from 'socket.io-client';
 
-import logoImg from '../../assets/logo.svg'
+import logoImg from '../../assets/logo.svg';
+import { api } from '../../services/api';
+import styles from './styles.module.scss';
+
+type Message = {
+  id: string;
+  text: string;
+  user: {
+    name: string;
+    avatar_url: string;
+  };
+};
+
+const messagesQueue: Message[] = [];
+
+const socket = io('http://localhost:4000');
+
+socket.on('new_message', (newMessage: Message) => {
+  messagesQueue.push(newMessage);
+});
 
 export function MessageList() {
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const timer = setInterval(() => {
+      if (messagesQueue.length > 0) {
+        setMessages((prevstate) =>
+          [messagesQueue[0], prevstate[0], prevstate[1]].filter(Boolean)
+        );
+
+        messagesQueue.shift();
+      }
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    api.get<Message[]>('messages/last3').then((response) => {
+      setMessages(response.data);
+    });
+  }, []);
+
   return (
     <div className={styles.messageListWrapper}>
       <img src={logoImg} alt="DoWhile 2021" />
 
       <ul className={styles.messageList}>
-        <li className={styles.message}>
-          <p className={styles.messageContent}>Não vejo a hora de começar esse evento, com certeza vai ser o melhor de todos os tempos, vamooo pra cima! 🔥🔥</p>
-          <div className={styles.messageUser}>
-            <div className={styles.userImage}>
-            <img src="https://github.com/luizaacampos.png" alt="Luiza Campos" />
-            </div>
-            <span>Luiza Campos</span>
-          </div>
-        </li>
-
-        <li className={styles.message}>
-          <p className={styles.messageContent}>Não vejo a hora de começar esse evento, com certeza vai ser o melhor de todos os tempos, vamooo pra cima! 🔥🔥</p>
-          <div className={styles.messageUser}>
-            <div className={styles.userImage}>
-            <img src="https://github.com/luizaacampos.png" alt="Luiza Campos" />
-            </div>
-            <span>Luiza Campos</span>
-          </div>
-        </li>
-
-        <li className={styles.message}>
-          <p className={styles.messageContent}>Não vejo a hora de começar esse evento, com certeza vai ser o melhor de todos os tempos, vamooo pra cima! 🔥🔥</p>
-          <div className={styles.messageUser}>
-            <div className={styles.userImage}>
-            <img src="https://github.com/luizaacampos.png" alt="Luiza Campos" />
-            </div>
-            <span>Luiza Campos</span>
-          </div>
-        </li>
+        {messages.map((message) => {
+          return (
+            <li className={styles.message} key={message.id}>
+              <p className={styles.messageContent}>{message.text}</p>
+              <div className={styles.messageUser}>
+                <div className={styles.userImage}>
+                  <img src={message.user.avatar_url} alt={message.user.name} />
+                </div>
+                <span>{message.user.name}</span>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
-  )
+  );
 }
